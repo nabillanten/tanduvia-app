@@ -1,0 +1,174 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- 1. ENUMS ---
+// Di Postgres, Enum dibuat sebagai tipe data kustom di database
+enum Role {
+  super_admin
+  petugas
+  ahli_gizi
+  ibu
+}
+
+enum Gender {
+  L
+  P
+}
+
+enum JenisIndeks {
+  BB_U
+  TB_U
+  BB_TB
+  IMT_U
+}
+
+enum KondisiTarget {
+  stunting
+  berat_kurang
+  gizi_lebih
+  umum
+}
+
+enum StatusPublikasi {
+  pending
+  published
+  rejected
+}
+
+// --- 2. MODELS ---
+
+model Posyandu {
+  id            Int      @id @default(autoincrement())
+  nama_posyandu String
+  alamat        String?  // Di Postgres, String otomatis jadi text (unlimited length) jika diperlukan
+  created_at    DateTime @default(now())
+  
+  users         User[]
+  anak          Anak[]
+  
+  @@map("posyandu")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  posyandu_id   Int?
+  nama_lengkap  String
+  email         String   @unique
+  password      String
+  role          Role
+  no_telepon    String?
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+
+  posyandu      Posyandu? @relation(fields: [posyandu_id], references: [id])
+  anak          Anak[]    @relation("IbuAnak")
+  pemeriksaan   Pemeriksaan[] 
+  rekomendasi   RekomendasiGizi[]
+
+  @@map("users")
+}
+
+model Anak {
+  id            Int      @id @default(autoincrement())
+  ibu_id        Int
+  posyandu_id   Int
+  rfid_tag      String   @unique
+  nik           String?  @unique
+  nama_anak     String
+  tempat_lahir  String?
+  tanggal_lahir DateTime @db.Date // Menggunakan tipe Date (bukan Timestamp)
+  jenis_kelamin Gender
+  
+  // Decimal di Postgres butuh presisi
+  bb_lahir      Decimal? @db.Decimal(5, 2)
+  tb_lahir      Decimal? @db.Decimal(5, 1)
+  
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+
+  ibu           User     @relation("IbuAnak", fields: [ibu_id], references: [id], onDelete: Cascade)
+  posyandu      Posyandu @relation(fields: [posyandu_id], references: [id])
+  pemeriksaan   Pemeriksaan[]
+
+  @@map("anak")
+}
+
+model StandarAntropometri {
+  id              Int         @id @default(autoincrement())
+  jenis_indeks    JenisIndeks
+  jenis_kelamin   Gender
+  umur_bulan      Int
+  
+  batas_min_3_sd  Decimal?    @db.Decimal(5, 2)
+  batas_min_2_sd  Decimal?    @db.Decimal(5, 2)
+  batas_min_1_sd  Decimal?    @db.Decimal(5, 2)
+  median          Decimal?    @db.Decimal(5, 2)
+  batas_plus_1_sd Decimal?    @db.Decimal(5, 2)
+  batas_plus_2_sd Decimal?    @db.Decimal(5, 2)
+  batas_plus_3_sd Decimal?    @db.Decimal(5, 2)
+
+  @@map("standar_antropometri")
+}
+
+model Pemeriksaan {
+  id            Int      @id @default(autoincrement())
+  anak_id       Int
+  petugas_id    Int
+  tanggal_ukur  DateTime @db.Date
+  usia_bulan    Int
+  
+  berat_badan   Decimal  @db.Decimal(5, 2)
+  tinggi_badan  Decimal  @db.Decimal(5, 1)
+  lingkar_kepala Decimal? @db.Decimal(5, 1)
+  
+  status_bb_u   String?
+  status_tb_u   String?
+  status_bb_tb  String?
+  status_imt_u  String?
+  
+  catatan       String?
+  created_at    DateTime @default(now())
+
+  anak          Anak     @relation(fields: [anak_id], references: [id], onDelete: Cascade)
+  petugas       User     @relation(fields: [petugas_id], references: [id])
+
+  @@map("pemeriksaan")
+}
+
+model RekomendasiGizi {
+  id             Int           @id @default(autoincrement())
+  ahli_gizi_id   Int
+  judul          String
+  deskripsi      String        // Postgres Text bisa menampung panjang
+  rentang_usia   String
+  target_kondisi KondisiTarget
+  icon_url       String?
+  created_at     DateTime      @default(now())
+
+  ahli_gizi      User          @relation(fields: [ahli_gizi_id], references: [id], onDelete: Cascade)
+  items          RekomendasiItem[]
+
+  @@map("rekomendasi_gizi")
+}
+
+model RekomendasiItem {
+  id             Int             @id @default(autoincrement())
+  rekomendasi_id Int
+  nama_makanan   String
+  
+  rekomendasi    RekomendasiGizi @relation(fields: [rekomendasi_id], references: [id], onDelete: Cascade)
+
+  @@map("rekomendasi_item")
+}
