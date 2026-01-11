@@ -13,8 +13,7 @@ datasource db {
   provider = "postgresql"
 }
 
-// --- 1. ENUMS ---
-// Di Postgres, Enum dibuat sebagai tipe data kustom di database
+// --- ENUMS ---
 enum Role {
   super_admin
   petugas
@@ -34,25 +33,29 @@ enum JenisIndeks {
   IMT_U
 }
 
-enum KondisiTarget {
-  stunting
-  berat_kurang
-  gizi_lebih
-  umum
-}
-
 enum StatusPublikasi {
   pending
   published
   rejected
 }
 
-// --- 2. MODELS ---
+enum StatusGizi {
+  sangat_pendek
+  pendek
+  normal
+  tinggi
+  bb_sangat_kurang
+  bb_kurang
+  bb_normal
+  risiko_bb_lebih
+}
+
+// --- MODELS ---
 
 model Posyandu {
-  id            Int      @id @default(autoincrement())
+  id            String   @id @default(uuid()) 
   nama_posyandu String
-  alamat        String?  // Di Postgres, String otomatis jadi text (unlimited length) jika diperlukan
+  alamat        String?  
   created_at    DateTime @default(now())
   
   users         User[]
@@ -62,10 +65,11 @@ model Posyandu {
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  posyandu_id   Int?
+  id            String   @id @default(uuid())
+  posyandu_id   String?
+  
   nama_lengkap  String
-  email         String   @unique
+  username      String   @unique 
   password      String
   role          Role
   no_telepon    String?
@@ -81,17 +85,17 @@ model User {
 }
 
 model Anak {
-  id            Int      @id @default(autoincrement())
-  ibu_id        Int
-  posyandu_id   Int
+  id            String   @id @default(uuid())
+  ibu_id        String
+  posyandu_id   String
+  
   rfid_tag      String   @unique
   nik           String?  @unique
   nama_anak     String
   tempat_lahir  String?
-  tanggal_lahir DateTime @db.Date // Menggunakan tipe Date (bukan Timestamp)
+  tanggal_lahir DateTime @db.Date 
   jenis_kelamin Gender
   
-  // Decimal di Postgres butuh presisi
   bb_lahir      Decimal? @db.Decimal(5, 2)
   tb_lahir      Decimal? @db.Decimal(5, 1)
   
@@ -105,6 +109,7 @@ model Anak {
   @@map("anak")
 }
 
+// Standar Antropometri tetap Int (Autoincrement) karena data referensi statis
 model StandarAntropometri {
   id              Int         @id @default(autoincrement())
   jenis_indeks    JenisIndeks
@@ -123,20 +128,21 @@ model StandarAntropometri {
 }
 
 model Pemeriksaan {
-  id            Int      @id @default(autoincrement())
-  anak_id       Int
-  petugas_id    Int
+  id            String   @id @default(uuid())
+  anak_id       String
+  petugas_id    String
+  
   tanggal_ukur  DateTime @db.Date
   usia_bulan    Int
   
   berat_badan   Decimal  @db.Decimal(5, 2)
   tinggi_badan  Decimal  @db.Decimal(5, 1)
-  lingkar_kepala Decimal? @db.Decimal(5, 1)
   
-  status_bb_u   String?
-  status_tb_u   String?
-  status_bb_tb  String?
-  status_imt_u  String?
+  status_bb_u   StatusGizi? 
+  status_tb_u   StatusGizi?
+  
+  status_bb_tb  String?      
+  status_imt_u  String?      
   
   catatan       String?
   created_at    DateTime @default(now())
@@ -148,12 +154,21 @@ model Pemeriksaan {
 }
 
 model RekomendasiGizi {
-  id             Int           @id @default(autoincrement())
-  ahli_gizi_id   Int
+  id             String        @id @default(uuid())
+  ahli_gizi_id   String
+  
   judul          String
-  deskripsi      String        // Postgres Text bisa menampung panjang
-  rentang_usia   String
-  target_kondisi KondisiTarget
+  deskripsi      String        @db.Text
+  
+  usia_min       Int           
+  usia_max       Int           
+  
+  jenis_indeks   JenisIndeks   
+  target_status  StatusGizi    
+  
+  status         StatusPublikasi @default(pending)
+  catatan_admin  String?         @db.Text 
+  
   icon_url       String?
   created_at     DateTime      @default(now())
 
@@ -164,8 +179,9 @@ model RekomendasiGizi {
 }
 
 model RekomendasiItem {
-  id             Int             @id @default(autoincrement())
-  rekomendasi_id Int
+  id             String          @id @default(uuid())
+  rekomendasi_id String
+  
   nama_makanan   String
   
   rekomendasi    RekomendasiGizi @relation(fields: [rekomendasi_id], references: [id], onDelete: Cascade)

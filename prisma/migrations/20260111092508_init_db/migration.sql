@@ -8,14 +8,14 @@ CREATE TYPE "Gender" AS ENUM ('L', 'P');
 CREATE TYPE "JenisIndeks" AS ENUM ('BB_U', 'TB_U', 'BB_TB', 'IMT_U');
 
 -- CreateEnum
-CREATE TYPE "KondisiTarget" AS ENUM ('stunting', 'berat_kurang', 'gizi_lebih', 'umum');
+CREATE TYPE "StatusPublikasi" AS ENUM ('pending', 'published', 'rejected');
 
 -- CreateEnum
-CREATE TYPE "StatusPublikasi" AS ENUM ('pending', 'published', 'rejected');
+CREATE TYPE "StatusGizi" AS ENUM ('sangat_pendek', 'pendek', 'normal', 'tinggi', 'bb_sangat_kurang', 'bb_kurang', 'bb_normal', 'risiko_bb_lebih');
 
 -- CreateTable
 CREATE TABLE "posyandu" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "nama_posyandu" TEXT NOT NULL,
     "alamat" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -25,10 +25,10 @@ CREATE TABLE "posyandu" (
 
 -- CreateTable
 CREATE TABLE "users" (
-    "id" SERIAL NOT NULL,
-    "posyandu_id" INTEGER,
+    "id" TEXT NOT NULL,
+    "posyandu_id" TEXT,
     "nama_lengkap" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
+    "username" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "role" "Role" NOT NULL,
     "no_telepon" TEXT,
@@ -40,9 +40,9 @@ CREATE TABLE "users" (
 
 -- CreateTable
 CREATE TABLE "anak" (
-    "id" SERIAL NOT NULL,
-    "ibu_id" INTEGER NOT NULL,
-    "posyandu_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "ibu_id" TEXT NOT NULL,
+    "posyandu_id" TEXT NOT NULL,
     "rfid_tag" TEXT NOT NULL,
     "nik" TEXT,
     "nama_anak" TEXT NOT NULL,
@@ -76,16 +76,15 @@ CREATE TABLE "standar_antropometri" (
 
 -- CreateTable
 CREATE TABLE "pemeriksaan" (
-    "id" SERIAL NOT NULL,
-    "anak_id" INTEGER NOT NULL,
-    "petugas_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "anak_id" TEXT NOT NULL,
+    "petugas_id" TEXT NOT NULL,
     "tanggal_ukur" DATE NOT NULL,
     "usia_bulan" INTEGER NOT NULL,
     "berat_badan" DECIMAL(5,2) NOT NULL,
     "tinggi_badan" DECIMAL(5,1) NOT NULL,
-    "lingkar_kepala" DECIMAL(5,1),
-    "status_bb_u" TEXT,
-    "status_tb_u" TEXT,
+    "status_bb_u" "StatusGizi",
+    "status_tb_u" "StatusGizi",
     "status_bb_tb" TEXT,
     "status_imt_u" TEXT,
     "catatan" TEXT,
@@ -96,12 +95,16 @@ CREATE TABLE "pemeriksaan" (
 
 -- CreateTable
 CREATE TABLE "rekomendasi_gizi" (
-    "id" SERIAL NOT NULL,
-    "ahli_gizi_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "ahli_gizi_id" TEXT NOT NULL,
     "judul" TEXT NOT NULL,
     "deskripsi" TEXT NOT NULL,
-    "rentang_usia" TEXT NOT NULL,
-    "target_kondisi" "KondisiTarget" NOT NULL,
+    "usia_min" INTEGER NOT NULL,
+    "usia_max" INTEGER NOT NULL,
+    "jenis_indeks" "JenisIndeks" NOT NULL,
+    "target_status" "StatusGizi" NOT NULL,
+    "status" "StatusPublikasi" NOT NULL DEFAULT 'pending',
+    "catatan_admin" TEXT,
     "icon_url" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -110,15 +113,15 @@ CREATE TABLE "rekomendasi_gizi" (
 
 -- CreateTable
 CREATE TABLE "rekomendasi_item" (
-    "id" SERIAL NOT NULL,
-    "rekomendasi_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "rekomendasi_id" TEXT NOT NULL,
     "nama_makanan" TEXT NOT NULL,
 
     CONSTRAINT "rekomendasi_item_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "anak_rfid_tag_key" ON "anak"("rfid_tag");
