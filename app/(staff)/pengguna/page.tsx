@@ -1,13 +1,8 @@
 import {DataTable} from "@/components/data-table";
 import data from "../../dashboard/data.json";
-import { prisma } from "@/lib/prisma-db";
 
 const UsersPage = async () => {
-  const prismadb = prisma
 
-  const users = await prismadb.user.findMany()
-
-  console.log(users,'users')
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
