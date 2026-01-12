@@ -45,7 +45,7 @@ const UsersPage = async (props: {searchParams: SearchParams}) => {
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
-        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 md:px-6">
+        <div className="flex flex-col gap-6 p-4">
           <div className="flex gap-6">
             <SearchInput placeholder="Cari Berdasarkan Nama..." />
             <Link href={"/#"}>
