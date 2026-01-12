@@ -37,7 +37,7 @@ const PosyanduSchema = z.object({
   alamat: z.string().nullable(),
 });
 
-const RoleEnum = z.enum(["super_admin", "petugas", "ahli_gizi", "ibu"]);
+export const RoleEnum = z.enum(["super_admin", "petugas", "ahli_gizi", "ibu"]);
 export const schema = z.object({
   id: z.string(),
   nama_lengkap: z.string(),
