@@ -3,15 +3,32 @@ import z from "zod";
 import {type ColumnDef} from "@tanstack/react-table";
 import {Badge} from "@/components/ui/badge";
 import {format} from "date-fns";
-import {IconCircleCheckFilled, IconCircleXFilled, IconDotsVertical} from "@tabler/icons-react";
+import {
+  IconCircleCheckFilled,
+  IconCircleXFilled,
+  IconDotsVertical,
+} from "@tabler/icons-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import {Button, buttonVariants} from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import React from "react";
+import {useRouter} from "next/navigation";
+import {updateStatusUserById} from "@/lib/actions/pengguna";
+import {toast} from "sonner";
 
 const PosyanduSchema = z.object({
   id: z.string(),
@@ -37,6 +54,67 @@ const roleLabels: Record<string, string> = {
   petugas: "Petugas",
   ahli_gizi: "Ahli Gizi",
   ibu: "Ibu",
+};
+
+const Actions = (props: z.infer<typeof schema>) => {
+  const [showDialog, setShowDialog] = React.useState(false);
+  const {push} = useRouter();
+  const {id, nama_lengkap, is_active} = props;
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+            size="icon">
+            <IconDotsVertical />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-32">
+          <DropdownMenuItem onSelect={() => push(`/pengguna/update/${id}`)}>
+            Ubah
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant={is_active ? "destructive" : "default"}
+            onClick={() => setShowDialog(true)}>
+            {is_active ? " Nonaktifkan" : "Aktifkan"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda akan {is_active ? "menonaktifkan" : "mengaktifkan"}{" "}
+              pengguna dengan nama {nama_lengkap}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                try {
+                  const user = await updateStatusUserById(id, is_active);
+                  toast.success("Berhasil memperbarui status pengguna!");
+                } catch (error) {
+                  console.log(error);
+                  toast.error("Gagal memperbarui status pengguna!");
+                }
+              }}
+              className={buttonVariants({
+                variant: is_active ? "destructive" : "default",
+              })}>
+              Yakin
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
 };
 
 export const penggunaColumns: ColumnDef<z.infer<typeof schema>>[] = [
@@ -83,25 +161,10 @@ export const penggunaColumns: ColumnDef<z.infer<typeof schema>>[] = [
     header: "Posyandu",
   },
   {
-    id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-            size="icon">
-            <IconDotsVertical />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>Ubah</DropdownMenuItem>
-          <DropdownMenuItem>Non-Aktifkan</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">Hapus</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    accessorKey: "id",
+    header: "",
+    cell: ({row}) => {
+      return <Actions {...row.original} />;
+    },
   },
 ];
